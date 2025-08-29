@@ -40,7 +40,7 @@ function App() {
           type="text" 
           value={ticker} 
           onChange={(e) => setTicker(e.target.value)}
-          placeholder="Enter ticker (e.g., AAPL)"
+          placeholder="Enter ticker (e.g., TSLA)"
           className="border p-2 rounded"
         />
         <button 
