@@ -1,0 +1,39 @@
+# Node modules
+node_modules/
+client/node_modules/
+server/node_modules/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Build outputs
+dist/
+build/
+client/build/
+server/dist/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Misc
+.DS_Store
+*.pem
+
+# Coverage/testing
+coverage/
+*.lcov
+
+# IDE/editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.tmp
+*.bak
+*.log
