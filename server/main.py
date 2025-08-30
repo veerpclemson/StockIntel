@@ -17,7 +17,7 @@ app.add_middleware(
 
 
 # In-memory storage for demo (later we’ll use a DB)
-watchlist = []
+watchlist: list[str] = []
 
 
 class StockItem(BaseModel):
