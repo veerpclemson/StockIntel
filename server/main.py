@@ -66,3 +66,13 @@ def add_stock(stock: StockItem):
         return {"message": f"{ticker} added to watchlist", "watchlist": watchlist}
     else:
         return {"message": f"{ticker} already in watchlist", "watchlist": watchlist}
+
+
+@app.delete("/watchlist/{ticker}")
+def remove_stock(ticker: str):
+    ticker = ticker.upper()
+    if ticker in watchlist:
+        watchlist.remove(ticker)
+        return {"message": f"{ticker} removed from watchlist", "watchlist": watchlist}
+    else:
+        return {"message": f"{ticker} not found in watchlist", "watchlist": watchlist}

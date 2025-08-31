@@ -36,6 +36,15 @@ function App() {
       })
       .catch(err => console.error(err));
   };
+const removeTicker = (ticker) => {
+  axios.delete(`http://127.0.0.1:8000/watchlist/${ticker}`)
+    .then(res => {
+      setMessage(res.data.message);       // optional message
+      setWatchlist(res.data.watchlist);   // update ticker list
+      fetchWatchlistInfo();               // refresh detailed info
+    })
+    .catch(err => console.error(err));
+};
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center p-6">
@@ -57,14 +66,30 @@ function App() {
             Add
           </button>
         </div>
-        {message && <p className="text-red-600 mt-2">{message}</p>}
+        {message && (
+        <p
+          className={`mt-2 ${
+            message.toLowerCase().includes("added") ? "text-green-600" : "text-red-600"
+          }`}
+        >
+          {message}
+  </p>
+)}
       </div>
 
       <ul className="bg-white p-4 rounded shadow w-80">
         {watchlistData.map((s, index) => (
-          <li key={index} className="border-b last:border-b-0 p-2">
+          <li key={index} className="border-b last:border-b-0 p-2 flex justify-between items-center">
+          <span>
             <strong>{s.name}</strong> (${s.price}) - {s.ticker} [{s.exchange}]
-          </li>
+          </span>
+          <button
+            onClick={() => removeTicker(s.ticker)}
+            className="bg-red-500 text-white px-2 rounded hover:bg-red-600"
+          >
+            Remove
+          </button>
+        </li>
         ))}
       </ul>
     </div>
