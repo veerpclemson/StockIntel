@@ -7,7 +7,7 @@ function App() {
   const [watchlistData, setWatchlistData] = useState([]); 
   const [message, setMessage] = useState("");        
 
-  // Keep track of previous prices
+  // Track previous prices for change highlights
   const prevPricesRef = useRef({});
 
   // Load initial watchlist and info
@@ -15,20 +15,21 @@ function App() {
     fetchWatchlist();
     fetchWatchlistInfo();
 
-    // Live updates every 15 seconds
     const interval = setInterval(() => {
       fetchWatchlistInfo();
-    }, 15000);
+    }, 15000); // refresh every 15s
 
     return () => clearInterval(interval);
   }, []);
 
+  // Fetch only the list of tickers
   const fetchWatchlist = () => {
     axios.get("http://127.0.0.1:8000/watchlist")
       .then(res => setWatchlist(res.data.watchlist))
       .catch(err => console.error(err));
   };
 
+  // Fetch detailed stock info for display
   const fetchWatchlistInfo = () => {
     axios.get("http://127.0.0.1:8000/watchlist-info")
       .then(res => {
@@ -48,26 +49,35 @@ function App() {
       .catch(err => console.error(err));
   };
 
+  // Add new ticker via backend
   const addTicker = () => {
     if (!ticker) return;
+
     axios.post("http://127.0.0.1:8000/watchlist", { ticker })
       .then(res => {
-        setMessage(res.data.message);       
-        setWatchlist(res.data.watchlist);   
-        setTicker("");                       
-        fetchWatchlistInfo();                
+        setMessage(res.data.message);
+        fetchWatchlist();       // reload ticker list from DB
+        fetchWatchlistInfo();   // reload detailed info
+        setTicker("");          // clear input
       })
-      .catch(err => console.error(err));
+      .catch(err => {
+        console.error(err);
+        setMessage("Error adding ticker");
+      });
   };
 
+  // Remove ticker via backend
   const removeTicker = (ticker) => {
     axios.delete(`http://127.0.0.1:8000/watchlist/${ticker}`)
       .then(res => {
-        setMessage(res.data.message);       
-        setWatchlist(res.data.watchlist);   
-        fetchWatchlistInfo();               
+        setMessage(res.data.message);
+        fetchWatchlist();
+        fetchWatchlistInfo();
       })
-      .catch(err => console.error(err));
+      .catch(err => {
+        console.error(err);
+        setMessage("Error removing ticker");
+      });
   };
 
   return (
@@ -90,12 +100,9 @@ function App() {
             Add
           </button>
         </div>
+
         {message && (
-          <p
-            className={`mt-2 ${
-              message.toLowerCase().includes("added") ? "text-green-600" : "text-red-600"
-            }`}
-          >
+          <p className={`mt-2 ${message.toLowerCase().includes("added") ? "text-green-600" : "text-red-600"}`}>
             {message}
           </p>
         )}
@@ -107,15 +114,10 @@ function App() {
           <li key={index} className="border-b last:border-b-0 p-2 flex justify-between items-center">
             <span>
               <strong>{s.name}</strong> ($
-              <span
-                className={
-                  s.priceChange === "up"
-                    ? "text-green-600"
-                    : s.priceChange === "down"
-                    ? "text-red-600"
-                    : ""
-                }
-              >
+              <span className={
+                  s.priceChange === "up" ? "text-green-600" :
+                  s.priceChange === "down" ? "text-red-600" : ""
+                }>
                 {s.price}
               </span>
               ) - {s.ticker} [{s.exchange}]
