@@ -6,7 +6,7 @@ class Watchlist(Base):
     __tablename__ = "watchlist"
     id = Column(Integer, primary_key=True, index=True)
     ticker = Column(String, unique=True, index=True, nullable=False)
-    user_id = Column(Integer, index=True, nullable=True)  # For future multi-user support
+    #user_id = Column(Integer, index=True, nullable=True)  # For future multi-user support
 
 # Portfolio table
 class Portfolio(Base):
@@ -14,4 +14,4 @@ class Portfolio(Base):
     id = Column(Integer, primary_key=True, index=True)
     ticker = Column(String, index=True, nullable=False)
     shares = Column(Float, default=0)
-    user_id = Column(Integer, index=True, nullable=True)
+    #user_id = Column(Integer, index=True, nullable=True)
