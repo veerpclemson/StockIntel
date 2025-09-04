@@ -87,7 +87,29 @@ def get_watchlist_info(user_id: int, db: Session = Depends(get_db)):
 def get_watchlist(user_id: int, db: Session = Depends(get_db)):
     stocks = db.query(Watchlist).filter(Watchlist.user_id == user_id).all()
     return {"watchlist": [s.ticker for s in stocks]}
+# Get chart for stock
+@app.get("/stock-chart/{ticker}")
+def stock_chart(ticker: str, period: str = "6mo", interval: str = "1d"):
+    """
+    Returns historical stock prices for the given ticker.
+    - period: '1mo', '3mo', '6mo', '1y', '5y', etc.
+    - interval: '1d', '1wk', '1mo', etc.
+    """
+    try:
+        stock = yf.Ticker(ticker)
+        hist = stock.history(period=period, interval=interval)
+        if hist.empty:
+            raise HTTPException(status_code=404, detail=f"No data found for {ticker}")
+        
+        # Format data for charting
+        chart_data = {
+            "dates": [d.strftime("%Y-%m-%d") for d in hist.index],
+            "prices": hist["Close"].tolist()
+        }
+        return chart_data
 
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 # Add ticker
 @app.post("/watchlist")
 def add_stock(stock: StockItem, db: Session = Depends(get_db)):
