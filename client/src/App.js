@@ -86,8 +86,11 @@ function App() {
           <button onClick={addTicker} className="bg-blue-600 text-white px-4 rounded hover:bg-blue-700">
             Add
           </button>
+          
         </div>
-
+         <button onClick={fetchWatchlistInfo} className="bg-blue-600 text-white px-4 rounded hover:bg-blue-700">
+            Refresh
+          </button>
         <input
           type="text"
           placeholder="Filter by ticker"
@@ -95,13 +98,13 @@ function App() {
           onChange={e => setFilter(e.target.value)}
           className="border p-2 rounded mt-2"
         />
-
+         
         <select value={sortKey} onChange={e => setSortKey(e.target.value)} className="border p-2 rounded mt-2">
           <option value="ticker">Sort by Ticker</option>
           <option value="price">Sort by Price</option>
           <option value="exchange">Sort by Exchange</option>
         </select>
-
+        
         {message && (
           <p className={`mt-2 ${message.toLowerCase().includes("added") ? "text-green-600" : "text-red-600"}`}>
             {message}
