@@ -1,27 +1,64 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import axios from "axios";
+import { Line } from "react-chartjs-2";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+} from "chart.js";
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 export default function StockDetail() {
   const { ticker } = useParams();
-  const [chartData, setChartData] = useState([]);
+  const [chartData, setChartData] = useState(null);
   const [news, setNews] = useState([]);
   const [aiAnalysis, setAiAnalysis] = useState("");
 
   useEffect(() => {
-    // Replace with your API endpoints
+    // Fetch chart data
     axios.get(`http://127.0.0.1:8000/stock-chart/${ticker}`)
       .then(res => setChartData(res.data))
       .catch(err => console.error(err));
 
+    // Fetch news
     axios.get(`http://127.0.0.1:8000/stock-news/${ticker}`)
       .then(res => setNews(res.data))
       .catch(err => console.error(err));
 
+    // Fetch AI analysis
     axios.get(`http://127.0.0.1:8000/stock-ai/${ticker}`)
       .then(res => setAiAnalysis(res.data.analysis))
       .catch(err => console.error(err));
   }, [ticker]);
+
+  // Prepare chart for Chart.js
+  const lineChartData = chartData ? {
+    labels: chartData.dates,
+    datasets: [
+      {
+        label: `${ticker} Price`,
+        data: chartData.prices,
+        borderColor: 'rgba(75,192,192,1)',
+        backgroundColor: 'rgba(75,192,192,0.2)',
+        tension: 0.3
+      }
+    ]
+  } : null;
 
   return (
     <div className="p-6">
@@ -30,21 +67,27 @@ export default function StockDetail() {
 
       <section className="mb-6">
         <h2 className="text-xl font-semibold mb-2">Chart</h2>
-        {/* TODO: Render chartData as chart */}
+        {lineChartData ? <Line data={lineChartData} /> : <p>Loading chart...</p>}
       </section>
 
       <section className="mb-6">
         <h2 className="text-xl font-semibold mb-2">Latest News</h2>
-        <ul>
-          {news.map((item, i) => (
-            <li key={i}><a href={item.url} target="_blank" rel="noopener noreferrer">{item.title}</a></li>
-          ))}
-        </ul>
+        {news.length > 0 ? (
+          <ul>
+            {news.map((item, i) => (
+              <li key={i}>
+                <a href={item.url} target="_blank" rel="noopener noreferrer">{item.title}</a>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>Loading news...</p>
+        )}
       </section>
 
       <section>
         <h2 className="text-xl font-semibold mb-2">AI Analysis</h2>
-        <p>{aiAnalysis}</p>
+        {aiAnalysis ? <p>{aiAnalysis}</p> : <p>Loading analysis...</p>}
       </section>
     </div>
   );
