@@ -9,7 +9,7 @@ from passlib.context import CryptContext
 from pydantic import BaseModel
 from models import User, Watchlist, Portfolio
 from database import Base
-
+import requests
 # DB setup
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
@@ -110,6 +110,26 @@ def stock_chart(ticker: str, period: str = "6mo", interval: str = "1d"):
 
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+#fetch the news for the stock page
+FINNHUB_API_KEY = "d2tm3rpr01qr5a738avgd2tm3rpr01qr5a738b00"
+
+@app.get("/stock-news/{ticker}")
+def get_stock_news(ticker: str):
+    url = f"https://finnhub.io/api/v1/company-news"
+    params = {
+        "symbol": ticker.upper(),
+        "from": "2024-09-01",  # adjust date range if needed
+        "to": "2025-09-05",
+        "token": FINNHUB_API_KEY
+    }
+    response = requests.get(url, params=params)
+    if response.status_code != 200:
+        return {"error": "Failed to fetch news"}
+    data = response.json()
+    return [
+        {"title": item.get("headline"), "url": item.get("url")}
+        for item in data if item.get("headline") and item.get("url")
+    ][:10]  # top 10 news
 # Add ticker
 @app.post("/watchlist")
 def add_stock(stock: StockItem, db: Session = Depends(get_db)):

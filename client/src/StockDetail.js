@@ -71,19 +71,23 @@ export default function StockDetail() {
       </section>
 
       <section className="mb-6">
-        <h2 className="text-xl font-semibold mb-2">Latest News</h2>
-        {news.length > 0 ? (
-          <ul>
-            {news.map((item, i) => (
-              <li key={i}>
-                <a href={item.url} target="_blank" rel="noopener noreferrer">{item.title}</a>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p>Loading news...</p>
-        )}
-      </section>
+      <h2 className="text-xl font-semibold mb-2">Latest News</h2>
+      {news.length === 0 ? (
+        <p>No news available for {ticker}</p>
+      ) : (
+        <ul>
+          {news.map((item, i) => (
+            <li key={i}>
+              <a href={item.url} target="_blank" rel="noopener noreferrer">
+                {item.title}
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+
+
 
       <section>
         <h2 className="text-xl font-semibold mb-2">AI Analysis</h2>
