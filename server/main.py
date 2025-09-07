@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy.orm import Session, sessionmaker
@@ -50,8 +50,8 @@ class UserLogin(BaseModel):
 # Pydantic models
 class StockItem(BaseModel):
     ticker: str
-    user_id: int
-    shares: float = 0
+    quantity: int
+    purchase_price: float
 
 # DB dependency
 def get_db():
@@ -83,10 +83,13 @@ def get_watchlist_info(user_id: int, db: Session = Depends(get_db)):
                     "name": info.get("shortName", "N/A"),
                     "price": info.get("regularMarketPrice", 0),
                     "exchange": info.get("exchange", "N/A"),
+                    "quantity": stock_obj.quantity,
+                    "purchase_price": stock_obj.purchase_price
                 })
         except Exception:
             continue
     return {"watchlist": result}
+
 # Get tickers only
 @app.get("/watchlist")
 def get_watchlist(user_id: int, db: Session = Depends(get_db)):
@@ -188,15 +191,18 @@ def stock_ai_analysis(ticker: str):
     return {"analysis": analysis}
 # Add ticker
 @app.post("/watchlist")
-def add_stock(stock: StockItem, db: Session = Depends(get_db)):
+def add_stock(stock: StockItem, user_id: int = Query(...), db: Session = Depends(get_db)):
     ticker = stock.ticker.upper()
-    user_id = stock.user_id
-
     existing = db.query(Watchlist).filter(Watchlist.user_id == user_id, Watchlist.ticker == ticker).first()
     if existing:
         raise HTTPException(status_code=400, detail=f"{ticker} already in watchlist")
 
-    db_stock = Watchlist(ticker=ticker, user_id=user_id)
+    db_stock = Watchlist(
+        ticker=ticker,
+        user_id=user_id,  # comes from query param
+        quantity=stock.quantity,
+        purchase_price=stock.purchase_price
+    )
     db.add(db_stock)
     db.commit()
     db.refresh(db_stock)
@@ -204,6 +210,8 @@ def add_stock(stock: StockItem, db: Session = Depends(get_db)):
         "message": f"{ticker} added",
         "watchlist": [s.ticker for s in db.query(Watchlist).filter(Watchlist.user_id == user_id).all()]
     }
+
+
 
 @app.post("/signup")
 def signup(user: UserCreate, db: Session = Depends(get_db)):

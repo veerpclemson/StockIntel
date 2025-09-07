@@ -11,7 +11,11 @@ function WatchlistHome() {
   const [message, setMessage] = useState("");
   const [sortKey, setSortKey] = useState("ticker");
   const [filter, setFilter] = useState("");
-  
+  const [quantity, setQuantity] = useState(0);
+  const [purchasePrice, setPurchasePrice] = useState(0);
+  const [portfolioValue, setPortfolioValue] = useState(0);
+  const [portfolioChange, setPortfolioChange] = useState(0); // overall gain/loss
+
   // AI chatbot state
   const [chatTicker, setChatTicker] = useState("");
   const [chatResponse, setChatResponse] = useState("");
@@ -34,30 +38,49 @@ function WatchlistHome() {
   };
 
   const fetchWatchlistInfo = () => {
-    axios.get(`http://127.0.0.1:8000/watchlist-info?user_id=${userId}`)
-      .then(res => {
-        const newData = res.data.watchlist.map(stock => {
-          const prevPrice = prevPricesRef.current[stock.ticker] ?? stock.price;
-          const priceChange = stock.price > prevPrice ? "up" : stock.price < prevPrice ? "down" : "same";
-          prevPricesRef.current[stock.ticker] = stock.price;
-          return { ...stock, priceChange };
-        });
-        setWatchlistData(newData);
-      })
-      .catch(err => console.error(err));
+  axios.get(`http://127.0.0.1:8000/watchlist-info?user_id=${userId}`)
+    .then(res => {
+      let totalValue = 0;
+      let totalPrevValue = 0;
+
+      const newData = res.data.watchlist.map(stock => {
+        const prevPrice = prevPricesRef.current[stock.ticker] ?? stock.price;
+        const priceChange = stock.price > prevPrice ? "up" : stock.price < prevPrice ? "down" : "same";
+        prevPricesRef.current[stock.ticker] = stock.price;
+
+        // Portfolio calculation
+        const quantity = stock.quantity || 1; // assuming you track quantity, default 1
+        totalValue += stock.price * quantity;
+        totalPrevValue += prevPrice * quantity;
+
+        return { ...stock, priceChange };
+      });
+
+      setWatchlistData(newData);
+      setPortfolioValue(totalValue);
+      setPortfolioChange(totalValue - totalPrevValue);
+    })
+    .catch(err => console.error(err));
   };
 
+
   const addTicker = () => {
-    if (!ticker) return;
-    axios.post("http://127.0.0.1:8000/watchlist", { ticker, user_id: userId })
-      .then(res => {
-        setMessage(res.data.message);
-        fetchWatchlist();
-        fetchWatchlistInfo();
-        setTicker("");
-      })
-      .catch(err => setMessage(err.response?.data.detail || "Error adding ticker"));
-  };
+  if (!ticker) return;
+  axios.post(`http://127.0.0.1:8000/watchlist?user_id=${userId}`, {
+    ticker: ticker,
+    quantity: parseInt(quantity),            // number
+    purchase_price: parseFloat(purchasePrice) // float
+  })
+  .then(res => {
+    setMessage(res.data.message);
+    fetchWatchlist();
+    fetchWatchlistInfo();
+    setTicker("");
+    setQuantity("");
+    setPurchasePrice("");
+  })
+  .catch(err => setMessage(err.response?.data.detail || "Error adding ticker"));
+};
 
   const removeTicker = (ticker) => {
     axios.delete(`http://127.0.0.1:8000/watchlist/${ticker}?user_id=${userId}`)
@@ -94,65 +117,84 @@ function WatchlistHome() {
     });
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col items-center p-6">
-      {!userId ? (
-        <Auth setUserId={(id) => { localStorage.setItem("userId", id); setUserId(id); }} />
-      ) : (
-        <>
-          <h1 className="text-3xl font-bold text-blue-600 mb-6">📈 StockIntel Watchlist</h1>
-          <button onClick={handleLogout} className="bg-gray-600 text-white px-4 rounded mb-4 hover:bg-gray-700">
-            Logout
-          </button>
+  <div className="min-h-screen bg-gray-100 flex flex-col items-center p-6">
+    {!userId ? (
+      <Auth setUserId={(id) => { localStorage.setItem("userId", id); setUserId(id); }} />
+    ) : (
+      <>
+        <h1 className="text-3xl font-bold text-blue-600 mb-6">📈 StockIntel Watchlist</h1>
+        <button onClick={handleLogout} className="bg-gray-600 text-white px-4 rounded mb-4 hover:bg-gray-700">
+          Logout
+        </button>
 
-          {/* Split Screen Container */}
-          <div className="flex w-full gap-6">
-            {/* Watchlist Section */}
-            <div className="flex-1 bg-white p-4 rounded shadow">
-              <h2 className="text-xl font-semibold mb-4">Your Watchlist</h2>
-              <div className="flex flex-col items-center gap-2 mb-4">
-                <div className="flex gap-2 w-full">
-                  <input type="text" value={ticker} onChange={e => setTicker(e.target.value)} placeholder="Enter ticker" className="border p-2 rounded flex-1" />
-                  <button onClick={addTicker} className="bg-blue-600 text-white px-4 rounded hover:bg-blue-700">Add</button>
-                </div>
+        {/* Split Screen Container */}
+        <div className="flex w-full gap-6">
 
-                <button onClick={fetchWatchlistInfo} className="bg-blue-600 text-white px-4 rounded hover:bg-blue-700">Refresh</button>
+          {/* Watchlist + Add Ticker Section */}
+          <div className="flex-1 bg-white p-4 rounded shadow">
+            <h2 className="text-xl font-semibold mb-4">Your Watchlist</h2>
 
-                <input type="text" placeholder="Filter by ticker" value={filter} onChange={e => setFilter(e.target.value)} className="border p-2 rounded mt-2 w-full" />
-
-                <select value={sortKey} onChange={e => setSortKey(e.target.value)} className="border p-2 rounded mt-2 w-full">
-                  <option value="ticker">Sort by Ticker</option>
-                  <option value="price">Sort by Price</option>
-                  <option value="exchange">Sort by Exchange</option>
-                </select>
-
-                {message && (
-                  <p className={`mt-2 ${message.toLowerCase().includes("added") ? "text-green-600" : "text-red-600"}`}>
-                    {message}
-                  </p>
-                )}
+            {/* Add Ticker Form */}
+            <div className="flex flex-col gap-2 mb-4">
+              <div className="flex gap-2 w-full">
+                <input type="text" value={ticker} onChange={e => setTicker(e.target.value)} placeholder="Ticker" className="border p-2 rounded flex-1" />
+                <input type="number" value={quantity} onChange={e => setQuantity(e.target.value)} placeholder="Quantity" className="border p-2 rounded w-24" />
+                <input type="number" value={purchasePrice} onChange={e => setPurchasePrice(e.target.value)} placeholder="Purchase Price" className="border p-2 rounded w-28" />
+                <button onClick={addTicker} className="bg-blue-600 text-white px-4 rounded hover:bg-blue-700">Add</button>
               </div>
 
-              <ul className="w-full">
-                {displayedData.length === 0 && <li className="p-2 text-gray-500">No tickers</li>}
-                {displayedData.map((s, i) => (
-                  <li key={i} className="border-b last:border-b-0 p-2 flex justify-between items-center">
-                    <Link to={`/stock/${s.ticker}`} className="flex-1">
-                      <span>
-                        <strong>{s.name}</strong> ($
-                        <span className={s.priceChange === "up" ? "text-green-600" : s.priceChange === "down" ? "text-red-600" : ""}>
-                          {s.price}
-                        </span>
-                        ) - {s.ticker} [{s.exchange}]
+              <button onClick={fetchWatchlistInfo} className="bg-blue-600 text-white px-4 rounded hover:bg-blue-700">
+                Refresh
+              </button>
+            </div>
+
+            {/* Watchlist Table */}
+            <ul className="w-full">
+              {displayedData.length === 0 && <li className="p-2 text-gray-500">No tickers</li>}
+              {displayedData.map((s, i) => (
+                <li key={i} className="border-b last:border-b-0 p-2 flex justify-between items-center">
+                  <Link to={`/stock/${s.ticker}`} className="flex-1">
+                    <span>
+                      <strong>{s.name}</strong> ($
+                      <span className={s.priceChange === "up" ? "text-green-600" : s.priceChange === "down" ? "text-red-600" : ""}>
+                        {s.price}
                       </span>
-                    </Link>
-                    <button onClick={() => removeTicker(s.ticker)} className="bg-red-500 text-white px-2 rounded hover:bg-red-600">Remove</button>
-                  </li>
-                ))}
+                      ) - {s.ticker} [{s.exchange}]
+                      <br />
+                      Qty: {s.quantity}, Purchase Price: ${s.purchase_price}
+                    </span>
+                  </Link>
+                  <button onClick={() => removeTicker(s.ticker)} className="bg-red-500 text-white px-2 rounded hover:bg-red-600">
+                    Remove
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Portfolio / AI Section */}
+          <div className="flex-1 flex flex-col gap-4">
+            
+            {/* Portfolio Tracker */}
+            <div className="bg-white p-4 rounded shadow">
+              <h2 className="text-xl font-semibold mb-4">Portfolio Tracker</h2>
+              <ul>
+                {displayedData.length === 0 && <li className="text-gray-500">No holdings yet</li>}
+                {displayedData.map((s, i) => {
+                  const currentValue = (s.price * s.quantity).toFixed(2);
+                  const profitLoss = ((s.price - s.purchase_price) * s.quantity).toFixed(2);
+                  return (
+                    <li key={i} className="mb-2">
+                      <strong>{s.ticker}</strong> | Qty: {s.quantity} | Current: ${currentValue} | P/L: 
+                      <span className={profitLoss > 0 ? "text-green-600" : profitLoss < 0 ? "text-red-600" : ""}> ${profitLoss}</span>
+                    </li>
+                  )
+                })}
               </ul>
             </div>
 
             {/* AI Chatbot Section */}
-            <div className="flex-1 bg-white p-4 rounded shadow flex flex-col">
+            <div className="bg-white p-4 rounded shadow flex flex-col flex-1">
               <h2 className="text-xl font-semibold mb-4">AI Stock Chat</h2>
               <div className="flex gap-2 mb-2">
                 <input type="text" value={chatTicker} onChange={e => setChatTicker(e.target.value)} placeholder="Enter ticker for analysis" className="border p-2 rounded flex-1 text-lg" />
@@ -162,11 +204,16 @@ function WatchlistHome() {
                 {chatResponse ? <p className="text-gray-800 whitespace-pre-line">{chatResponse}</p> : <p className="text-gray-500">Enter a ticker and click Analyze to get AI insights.</p>}
               </div>
             </div>
+
           </div>
-        </>
-      )}
-    </div>
-  );
+
+        </div>
+      </>
+    )}
+  </div>
+);
+
+
 }
 
 export default WatchlistHome;
