@@ -11,6 +11,10 @@ function WatchlistHome() {
   const [message, setMessage] = useState("");
   const [sortKey, setSortKey] = useState("ticker");
   const [filter, setFilter] = useState("");
+  
+  // AI chatbot state
+  const [chatTicker, setChatTicker] = useState("");
+  const [chatResponse, setChatResponse] = useState("");
 
   const prevPricesRef = useRef({});
 
@@ -72,6 +76,14 @@ function WatchlistHome() {
     setWatchlistData([]);
   };
 
+  const handleChat = () => {
+    if (!chatTicker) return;
+    setChatResponse("Loading AI analysis...");
+    axios.get(`http://127.0.0.1:8000/stock-ai/${chatTicker.toUpperCase()}`)
+      .then(res => setChatResponse(res.data.analysis))
+      .catch(err => setChatResponse("Error fetching AI analysis"));
+  };
+
   const displayedData = watchlistData
     .filter(s => s.ticker.includes(filter.toUpperCase()))
     .sort((a, b) => {
@@ -92,46 +104,65 @@ function WatchlistHome() {
             Logout
           </button>
 
-          <div className="flex flex-col items-center gap-2 mb-4">
-            <div className="flex gap-2">
-              <input type="text" value={ticker} onChange={e => setTicker(e.target.value)} placeholder="Enter ticker" className="border p-2 rounded" />
-              <button onClick={addTicker} className="bg-blue-600 text-white px-4 rounded hover:bg-blue-700">Add</button>
+          {/* Split Screen Container */}
+          <div className="flex w-full gap-6">
+            {/* Watchlist Section */}
+            <div className="flex-1 bg-white p-4 rounded shadow">
+              <h2 className="text-xl font-semibold mb-4">Your Watchlist</h2>
+              <div className="flex flex-col items-center gap-2 mb-4">
+                <div className="flex gap-2 w-full">
+                  <input type="text" value={ticker} onChange={e => setTicker(e.target.value)} placeholder="Enter ticker" className="border p-2 rounded flex-1" />
+                  <button onClick={addTicker} className="bg-blue-600 text-white px-4 rounded hover:bg-blue-700">Add</button>
+                </div>
+
+                <button onClick={fetchWatchlistInfo} className="bg-blue-600 text-white px-4 rounded hover:bg-blue-700">Refresh</button>
+
+                <input type="text" placeholder="Filter by ticker" value={filter} onChange={e => setFilter(e.target.value)} className="border p-2 rounded mt-2 w-full" />
+
+                <select value={sortKey} onChange={e => setSortKey(e.target.value)} className="border p-2 rounded mt-2 w-full">
+                  <option value="ticker">Sort by Ticker</option>
+                  <option value="price">Sort by Price</option>
+                  <option value="exchange">Sort by Exchange</option>
+                </select>
+
+                {message && (
+                  <p className={`mt-2 ${message.toLowerCase().includes("added") ? "text-green-600" : "text-red-600"}`}>
+                    {message}
+                  </p>
+                )}
+              </div>
+
+              <ul className="w-full">
+                {displayedData.length === 0 && <li className="p-2 text-gray-500">No tickers</li>}
+                {displayedData.map((s, i) => (
+                  <li key={i} className="border-b last:border-b-0 p-2 flex justify-between items-center">
+                    <Link to={`/stock/${s.ticker}`} className="flex-1">
+                      <span>
+                        <strong>{s.name}</strong> ($
+                        <span className={s.priceChange === "up" ? "text-green-600" : s.priceChange === "down" ? "text-red-600" : ""}>
+                          {s.price}
+                        </span>
+                        ) - {s.ticker} [{s.exchange}]
+                      </span>
+                    </Link>
+                    <button onClick={() => removeTicker(s.ticker)} className="bg-red-500 text-white px-2 rounded hover:bg-red-600">Remove</button>
+                  </li>
+                ))}
+              </ul>
             </div>
 
-            <button onClick={fetchWatchlistInfo} className="bg-blue-600 text-white px-4 rounded hover:bg-blue-700">Refresh</button>
-
-            <input type="text" placeholder="Filter by ticker" value={filter} onChange={e => setFilter(e.target.value)} className="border p-2 rounded mt-2" />
-
-            <select value={sortKey} onChange={e => setSortKey(e.target.value)} className="border p-2 rounded mt-2">
-              <option value="ticker">Sort by Ticker</option>
-              <option value="price">Sort by Price</option>
-              <option value="exchange">Sort by Exchange</option>
-            </select>
-
-            {message && (
-              <p className={`mt-2 ${message.toLowerCase().includes("added") ? "text-green-600" : "text-red-600"}`}>
-                {message}
-              </p>
-            )}
+            {/* AI Chatbot Section */}
+            <div className="flex-1 bg-white p-4 rounded shadow flex flex-col">
+              <h2 className="text-xl font-semibold mb-4">AI Stock Chat</h2>
+              <div className="flex gap-2 mb-2">
+                <input type="text" value={chatTicker} onChange={e => setChatTicker(e.target.value)} placeholder="Enter ticker for analysis" className="border p-2 rounded flex-1 text-lg" />
+                <button onClick={handleChat} className="bg-green-600 text-white px-4 rounded hover:bg-green-700">Analyze</button>
+              </div>
+              <div className="mt-4 flex-1 overflow-y-auto border p-2 rounded bg-gray-50">
+                {chatResponse ? <p className="text-gray-800 whitespace-pre-line">{chatResponse}</p> : <p className="text-gray-500">Enter a ticker and click Analyze to get AI insights.</p>}
+              </div>
+            </div>
           </div>
-
-          <ul className="bg-white p-4 rounded shadow w-96">
-            {displayedData.length === 0 && <li className="p-2 text-gray-500">No tickers</li>}
-            {displayedData.map((s, i) => (
-              <li key={i} className="border-b last:border-b-0 p-2 flex justify-between items-center">
-                <Link to={`/stock/${s.ticker}`} className="flex-1">
-                  <span>
-                    <strong>{s.name}</strong> ($
-                    <span className={s.priceChange === "up" ? "text-green-600" : s.priceChange === "down" ? "text-red-600" : ""}>
-                      {s.price}
-                    </span>
-                    ) - {s.ticker} [{s.exchange}]
-                  </span>
-                </Link>
-                <button onClick={() => removeTicker(s.ticker)} className="bg-red-500 text-white px-2 rounded hover:bg-red-600">Remove</button>
-              </li>
-            ))}
-          </ul>
         </>
       )}
     </div>
