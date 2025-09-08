@@ -12,13 +12,6 @@ class Watchlist(Base):
     quantity = Column(Integer, default=0)
     purchase_price = Column(Float, default=0.0)
 
-class Portfolio(Base):
-    __tablename__ = "portfolio"
-    id = Column(Integer, primary_key=True, index=True)
-    ticker = Column(String, index=True, nullable=False)
-    shares = Column(Float, default=0)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-
 
 class User(Base):
     __tablename__ = "users"
