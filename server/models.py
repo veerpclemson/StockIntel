@@ -12,7 +12,6 @@ class Watchlist(Base):
     quantity = Column(Integer, default=0)
     purchase_price = Column(Float, default=0.0)
 
-
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
