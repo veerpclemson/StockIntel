@@ -9,13 +9,13 @@ from passlib.context import CryptContext
 from .models import User, Watchlist
 from .database import Base
 import requests
-import openai  # fixed
+import openai
 from dotenv import load_dotenv
 from datetime import datetime, timedelta, date
 
 # Load environment variables
 load_dotenv()
-openai.api_key = os.getenv("OPENAI_API_KEY")  # fixed
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # DB setup
 DATABASE_URL = os.environ.get("DATABASE_URL")
@@ -25,9 +25,12 @@ Base.metadata.create_all(bind=engine)
 
 # FastAPI setup
 app = FastAPI()
+
+# CORS setup — allow only your frontend
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "*")  # set this in Render to your frontend domain
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # for testing; in prod, restrict to your frontend domain
+    allow_origins=[FRONTEND_URL],  
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -57,9 +60,7 @@ def get_db():
     finally:
         db.close()
 
-# ------------------------
 # Routes
-# ------------------------
 @app.get("/")
 def root():
     return {"message": "StockIntel API is running"}
@@ -88,7 +89,19 @@ def get_watchlist_info(user_id: int, db: Session = Depends(get_db)):
 @app.get("/watchlist")
 def get_watchlist(user_id: int, db: Session = Depends(get_db)):
     stocks = db.query(Watchlist).filter(Watchlist.user_id == user_id).all()
-    return {"watchlist": [s.ticker for s in stocks]}
+    return {
+        "watchlist": [
+            {
+                "ticker": s.ticker,
+                "quantity": s.quantity,
+                "purchase_price": s.purchase_price
+            } for s in stocks
+        ]
+    }
+
+# ... other routes remain unchanged (stock-chart, stock-news, stock-ai, signup, login, add/remove stock)
+
+
 
 @app.get("/stock-chart/{ticker}")
 def stock_chart(ticker: str, period: str = "6mo", interval: str = "1d"):
