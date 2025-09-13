@@ -25,26 +25,28 @@ ChartJS.register(
 
 export default function StockDetail() {
   const { ticker } = useParams();
+  const API_URL = process.env.REACT_APP_API_URL; // Use the environment variable
+
   const [chartData, setChartData] = useState(null);
   const [news, setNews] = useState([]);
   const [aiAnalysis, setAiAnalysis] = useState("");
 
   useEffect(() => {
     // Fetch chart data
-    axios.get(`http://127.0.0.1:8000/stock-chart/${ticker}`)
+    axios.get(`${API_URL}/stock-chart/${ticker}`)
       .then(res => setChartData(res.data))
       .catch(err => console.error(err));
 
     // Fetch news
-    axios.get(`http://127.0.0.1:8000/stock-news/${ticker}`)
+    axios.get(`${API_URL}/stock-news/${ticker}`)
       .then(res => setNews(res.data))
       .catch(err => console.error(err));
 
     // Fetch AI analysis
-    axios.get(`http://127.0.0.1:8000/stock-ai/${ticker}`)
+    axios.get(`${API_URL}/stock-ai/${ticker}`)
       .then(res => setAiAnalysis(res.data.analysis))
       .catch(err => console.error(err));
-  }, [ticker]);
+  }, [ticker, API_URL]);
 
   // Prepare chart for Chart.js
   const lineChartData = chartData ? {
@@ -71,23 +73,21 @@ export default function StockDetail() {
       </section>
 
       <section className="mb-6">
-      <h2 className="text-xl font-semibold mb-2">Latest News</h2>
-      {news.length === 0 ? (
-        <p>No news available for {ticker}</p>
-      ) : (
-        <ul>
-          {news.map((item, i) => (
-            <li key={i}>
-              <a href={item.url} target="_blank" rel="noopener noreferrer">
-                {item.title}
-              </a>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
-
-
+        <h2 className="text-xl font-semibold mb-2">Latest News</h2>
+        {news.length === 0 ? (
+          <p>No news available for {ticker}</p>
+        ) : (
+          <ul>
+            {news.map((item, i) => (
+              <li key={i}>
+                <a href={item.url} target="_blank" rel="noopener noreferrer">
+                  {item.title}
+                </a>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       <section>
         <h2 className="text-xl font-semibold mb-2">AI Analysis</h2>

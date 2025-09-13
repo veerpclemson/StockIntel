@@ -3,18 +3,20 @@ import { useState } from "react";
 import axios from "axios";
 
 export default function Auth({ setUserId }) {
+  const API_URL = process.env.REACT_APP_API_URL; // Use the environment variable
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
 
   const signup = () => {
-    axios.post("http://127.0.0.1:8000/signup", { email, password })
+    axios.post(`${API_URL}/signup`, { email, password })
       .then(res => setMessage(res.data.message))
       .catch(err => setMessage(err.response?.data?.detail || "Signup error"));
   };
 
   const login = () => {
-    axios.post("http://127.0.0.1:8000/login", { email, password })
+    axios.post(`${API_URL}/login`, { email, password })
       .then(res => {
         setMessage(res.data.message);
         setUserId(res.data.user_id);
