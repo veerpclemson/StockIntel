@@ -8,7 +8,7 @@ import os
 from passlib.context import CryptContext
 from pydantic import BaseModel
 from .models import User, Watchlist
-from database import Base
+from .database import Base
 import requests
 from openai import OpenAI
 from dotenv import load_dotenv
