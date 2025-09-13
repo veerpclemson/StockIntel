@@ -30,7 +30,7 @@ app = FastAPI()
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "*")  # set this in Render to your frontend domain
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[FRONTEND_URL],  
+    allow_origins=["https://stockintel-1.onrender.com"],  
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
