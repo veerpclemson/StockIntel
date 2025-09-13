@@ -177,15 +177,14 @@ def stock_ai_analysis(ticker: str):
     """
 
     try:
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "You are a financial analyst AI."},
                 {"role": "user", "content": prompt}
             ]
         )
-        # v1.3 uses response['choices'][0]['message']['content']
-        analysis = response['choices'][0]['message']['content'].strip()
+        analysis = response.choices[0].message.content.strip()
     except Exception:
         analysis = "AI analysis failed. Try again later."
 

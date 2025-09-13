@@ -5,7 +5,6 @@ import Auth from "./Auth";
 
 function WatchlistHome() {
   const API_URL = process.env.REACT_APP_API_URL;
-  console.log("API URL:", process.env.REACT_APP_API_URL);
 
 
   const [userId, setUserId] = useState(() => localStorage.getItem("userId") || null);
