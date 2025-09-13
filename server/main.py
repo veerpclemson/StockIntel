@@ -6,19 +6,19 @@ from sqlalchemy import create_engine
 import yfinance as yf
 import os
 from passlib.context import CryptContext
-from pydantic import BaseModel
 from .models import User, Watchlist
 from .database import Base
 import requests
-from openai import OpenAI
+import openai  # fixed
 from dotenv import load_dotenv
 from datetime import datetime, timedelta, date
+
+# Load environment variables
 load_dotenv()
-client = OpenAI()
+openai.api_key = os.getenv("OPENAI_API_KEY")  # fixed
+
 # DB setup
-
 DATABASE_URL = os.environ.get("DATABASE_URL")
-
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base.metadata.create_all(bind=engine)
@@ -43,10 +43,6 @@ class UserLogin(BaseModel):
     email: str
     password: str
 
-# Signup route
-
-
-# Pydantic models
 class StockItem(BaseModel):
     ticker: str
     quantity: int
@@ -67,7 +63,6 @@ def get_db():
 def root():
     return {"message": "StockIntel API is running"}
 
-# Get detailed watchlist info (price, name, exchange, % change)
 @app.get("/watchlist-info")
 def get_watchlist_info(user_id: int, db: Session = Depends(get_db)):
     stocks = db.query(Watchlist).filter(Watchlist.user_id == user_id).all()
@@ -89,26 +84,19 @@ def get_watchlist_info(user_id: int, db: Session = Depends(get_db)):
             continue
     return {"watchlist": result}
 
-# Get tickers only
 @app.get("/watchlist")
 def get_watchlist(user_id: int, db: Session = Depends(get_db)):
     stocks = db.query(Watchlist).filter(Watchlist.user_id == user_id).all()
     return {"watchlist": [s.ticker for s in stocks]}
-# Get chart for stock
+
 @app.get("/stock-chart/{ticker}")
 def stock_chart(ticker: str, period: str = "6mo", interval: str = "1d"):
-    """
-    Returns historical stock prices for the given ticker.
-    - period: '1mo', '3mo', '6mo', '1y', '5y', etc.
-    - interval: '1d', '1wk', '1mo', etc.
-    """
     try:
         stock = yf.Ticker(ticker)
         hist = stock.history(period=period, interval=interval)
         if hist.empty:
             raise HTTPException(status_code=404, detail=f"No data found for {ticker}")
         
-        # Format data for charting
         chart_data = {
             "dates": [d.strftime("%Y-%m-%d") for d in hist.index],
             "prices": hist["Close"].tolist()
@@ -117,22 +105,20 @@ def stock_chart(ticker: str, period: str = "6mo", interval: str = "1d"):
 
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
-#fetch the news for the stock page
-FINNHUB_API_KEY = os.getenv("FINNHUB_API_KEY")
 
+FINNHUB_API_KEY = os.getenv("FINNHUB_API_KEY")
 today = datetime.today()
 last_30_days = today - timedelta(days=30)
-
 
 @app.get("/stock-news/{ticker}")
 def get_stock_news(ticker: str):
     url = f"https://finnhub.io/api/v1/company-news"
     params = {
-    "symbol": ticker.upper(),
-    "from": last_30_days.strftime("%Y-%m-%d"),
-    "to": today.strftime("%Y-%m-%d"),
-    "token": FINNHUB_API_KEY
-}
+        "symbol": ticker.upper(),
+        "from": last_30_days.strftime("%Y-%m-%d"),
+        "to": today.strftime("%Y-%m-%d"),
+        "token": FINNHUB_API_KEY
+    }
     response = requests.get(url, params=params)
     if response.status_code != 200:
         return {"error": "Failed to fetch news"}
@@ -140,7 +126,8 @@ def get_stock_news(ticker: str):
     return [
         {"title": item.get("headline"), "url": item.get("url")}
         for item in data if item.get("headline") and item.get("url")
-    ][:10]  # top 10 news
+    ][:10]
+
 @app.get("/stock-ai/{ticker}")
 def stock_ai_analysis(ticker: str):
     # 1. Calculate date range for last 30 days
@@ -176,19 +163,21 @@ def stock_ai_analysis(ticker: str):
     """
 
     try:
-        response = client.chat.completions.create(
+        response = openai.ChatCompletion.create(
             model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "You are a financial analyst AI."},
                 {"role": "user", "content": prompt}
             ]
         )
-        analysis = response.choices[0].message.content.strip()
+        # v1.3 uses response['choices'][0]['message']['content']
+        analysis = response['choices'][0]['message']['content'].strip()
     except Exception:
         analysis = "AI analysis failed. Try again later."
 
     return {"analysis": analysis}
-# Add ticker
+
+
 @app.post("/watchlist")
 def add_stock(stock: StockItem, user_id: int = Query(...), db: Session = Depends(get_db)):
     ticker = stock.ticker.upper()
@@ -198,7 +187,7 @@ def add_stock(stock: StockItem, user_id: int = Query(...), db: Session = Depends
 
     db_stock = Watchlist(
         ticker=ticker,
-        user_id=user_id,  # comes from query param
+        user_id=user_id,
         quantity=stock.quantity,
         purchase_price=stock.purchase_price
     )
@@ -209,8 +198,6 @@ def add_stock(stock: StockItem, user_id: int = Query(...), db: Session = Depends
         "message": f"{ticker} added",
         "watchlist": [s.ticker for s in db.query(Watchlist).filter(Watchlist.user_id == user_id).all()]
     }
-
-
 
 @app.post("/signup")
 def signup(user: UserCreate, db: Session = Depends(get_db)):
@@ -225,14 +212,13 @@ def signup(user: UserCreate, db: Session = Depends(get_db)):
     db.refresh(db_user)
     return {"message": "User created successfully"}
 
-# Login route
 @app.post("/login")
 def login(user: UserLogin, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.email == user.email).first()
     if not db_user or not pwd_context.verify(user.password, db_user.password_hash):
         raise HTTPException(status_code=400, detail="Invalid email or password")
     return {"message": "Login successful", "user_id": db_user.id}
-# Remove ticker
+
 @app.delete("/watchlist/{ticker}")
 def remove_stock(ticker: str, user_id: int, db: Session = Depends(get_db)):
     stock_obj = db.query(Watchlist).filter(Watchlist.user_id == user_id, Watchlist.ticker == ticker.upper()).first()
@@ -241,4 +227,3 @@ def remove_stock(ticker: str, user_id: int, db: Session = Depends(get_db)):
     db.delete(stock_obj)
     db.commit()
     return {"message": f"{ticker} removed", "watchlist": [s.ticker for s in db.query(Watchlist).filter(Watchlist.user_id == user_id).all()]}
-
