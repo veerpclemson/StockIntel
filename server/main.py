@@ -14,7 +14,7 @@ from openai import OpenAI
 from dotenv import load_dotenv
 from datetime import datetime, timedelta, date
 load_dotenv()
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = OpenAI()
 # DB setup
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
